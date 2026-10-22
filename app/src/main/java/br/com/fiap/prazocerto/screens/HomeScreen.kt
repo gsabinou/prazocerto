@@ -36,15 +36,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import br.com.fiap.prazocerto.ui.theme.PrazoCertoTheme
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import br.com.fiap.prazocerto.BuildConfig
 import br.com.fiap.prazocerto.model.Activity
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.database
@@ -56,11 +60,29 @@ fun HomeScreen(
     navController: NavController
 ) {
 
+    // Obter uma instancia do Firebase
+    val loggedUser = FirebaseAuth.getInstance()
+
+    // Necessário para deslogar da conta do Google
+    val context = LocalContext.current
+    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        .requestIdToken(BuildConfig.DEFAULT_WEB_CLIENT_ID)
+        .requestEmail()
+        .build()
+
+    val googleSignInClient = GoogleSignIn.getClient(context, gso)
+
     var  showDialog by remember { mutableStateOf(false) }
 
     var showDialogExclude by remember { mutableStateOf(false) }
 
     var activityIdToExclude by remember { mutableStateOf("") }
+
+    var showDialogEdit by remember { mutableStateOf(false) }
+
+    var editActivity by remember {
+        mutableStateOf(Activity())
+    }
 
     // variável que carregará a lista de atividades obtidas no firebase
     val activities = remember { mutableStateListOf<Activity>() }
@@ -74,7 +96,7 @@ fun HomeScreen(
     // obtendo uma ref do nó "activities" e carregando os seus children
     // Buscamos os dados do Firebase
     // e preenchemos a lista de atividades
-    database.getReference("atividades").get()
+    database.getReference("activities").get()
         .addOnSuccessListener { dataSnapshot ->
             activities.clear()
             for (child in dataSnapshot.children) {
@@ -96,15 +118,28 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Prazo Certo",
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Column {
+                            Text(
+                                text = "Prazo Certo",
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+
+                            Text(
+                                text = "Olá, ${loggedUser.currentUser?.displayName}",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 14.sp
+                            )
+                        }
                         IconButton(
                             onClick = {
                                 val authenticate = FirebaseAuth.getInstance()
                                 authenticate.signOut()
-                                navController.navigate("login")
+
+                                // logout do Google
+                                googleSignInClient.signOut()
+                                    .addOnCompleteListener {
+                                        navController.navigate("login")
+                                    }
                             }
                         ) {
                             Icon(
@@ -191,7 +226,10 @@ fun HomeScreen(
                             )
                         }
                         IconButton(
-                            onClick = {}
+                            onClick = {
+                                editActivity = it
+                                showDialogEdit = true
+                            }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
@@ -235,7 +273,7 @@ fun HomeScreen(
                 TextButton(
                     onClick = {
                     showDialogExclude = false
-                    database.getReference("atividades")
+                    database.getReference("activities")
                         .child(activityIdToExclude)
                         .removeValue()
                 }) {
@@ -261,7 +299,18 @@ fun HomeScreen(
             operation = "Adicionar"
         )
     }
-    
+
+    // Exibe o AlertDialog AtividadeDialog para edição
+    if (showDialogEdit) {
+        ActivityDialog(
+            onDismiss = { showDialogEdit = false },
+            onConfirm = { showDialogEdit = false },
+            operation = "Editar",
+            activity = editActivity
+        )
+    }
+
+
 }
 
 @Preview

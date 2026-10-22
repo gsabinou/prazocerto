@@ -93,29 +93,50 @@ fun ActivityDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val newActivity = Activity(
-                        title = title,
-                        discipline = discipline,
-                        deliverDate = deliverDate,
-                        wasDelivered = wasDelivered
-                    )
 
                     // criando uma instância do Firebase
                     val database = Firebase.database(
                         databaseUrl
                     )
 
-                    // referenciando o nó "activities", afinal estamos tratando de um BD NoSQL
-                    // (similar ao MongoDB)
-                    val activitiesRef = database.getReference("activities").push()
+                    if (operation == "Adicionar") {
 
-                    // gerando um ID para a activity
-                    newActivity.id = activitiesRef.push().key.toString()
+                        val newActivity = Activity(
+                            title = title,
+                            discipline = discipline,
+                            deliverDate = deliverDate,
+                            wasDelivered = wasDelivered
+                        )
 
-                    // convertendo e gravando a activity no Realtime Database
-                    activitiesRef.setValue(newActivity.toJson())
+                        // referenciando o nó "activities", afinal estamos tratando de um BD NoSQL
+                        // (similar ao MongoDB)
+                        val activitiesRef = database.getReference("activities").push()
+
+                        // gerando um ID para a activity
+                        newActivity.id = activitiesRef.push().key.toString()
+
+                        // convertendo e gravando a activity no Realtime Database
+                        activitiesRef.setValue(newActivity.toJson())
+
+                    } else { // Implementamos um else ao invés de outra verificação ou outra função
+                        // pois apenas há as possibilidades de adicionar e modificar, e também
+                        // este projeto serve apenas para treinar a lógica com o Firebase
+
+                        val newActivity = activity.copy(
+                            title = title,
+                            discipline = discipline,
+                            deliverDate = deliverDate,
+                            wasDelivered = wasDelivered
+                        )
+
+                        database.getReference("activities")
+                            .child(activity.id)
+                            .setValue(newActivity.toJson())
+
+                    }
 
                     onConfirm()
+
                 }
             ) {
                 Text(text = "Confirmar")

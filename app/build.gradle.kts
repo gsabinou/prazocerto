@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
+    // id("com.google.gms.google-services")
 }
 
 android {
@@ -31,9 +32,11 @@ android {
 
         //lê a variável
         val dbUrl = properties.getProperty("DATABASE_URL")
+        val webClient = properties.getProperty("DEFAULT_WEB_CLIENT_ID")
 
         // injeta a string de conexão no código do aplicativo
         buildConfigField("String", "DB_CONNECTION_URL", dbUrl)
+        buildConfigField("String", "DEFAULT_WEB_CLIENT_ID", webClient)
 
     }
 
@@ -81,4 +84,9 @@ dependencies {
 
     // Dependência do navigation
     implementation("androidx.navigation:navigation-compose:2.9.6")
+
+    // Google authentication
+    implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+
 }

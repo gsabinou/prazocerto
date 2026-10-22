@@ -1,6 +1,8 @@
 package br.com.fiap.prazocerto.screens
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,7 +37,12 @@ import br.com.fiap.prazocerto.R
 import br.com.fiap.prazocerto.ui.theme.PrazoCertoTheme
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import br.com.fiap.prazocerto.BuildConfig
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 
 @Composable
 fun LoginScreen(
@@ -61,6 +68,59 @@ fun LoginScreen(
     // verifica se o usuário já está logado, ou seja, se os dados de autenticação estão presentes
     if (authenticate.currentUser != null) {
         navController.navigate("home")
+    }
+
+    // Lógica para autenticação via Google Account
+    // 1- Configurar as opções do Google Signin
+    val auth = FirebaseAuth.getInstance()
+    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        .requestIdToken(BuildConfig.DEFAULT_WEB_CLIENT_ID)
+        .requestEmail()
+        .build()
+
+    val googleSignInClient = GoogleSignIn.getClient(context, gso)
+
+    // 2 - Criar o lançador que irá abrir a janelinha do Google
+    // e esperar o resultado
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+
+        try {
+            // 3 - Obter a conta do Google, se o usuário logou com sucesso
+            val account = task.getResult(ApiException::class.java)
+
+            // 4 - Obter o token da conta
+            val idToken = account.idToken
+
+            if (idToken != null) {
+                // 5 - Trocar o token com o Firebase
+                val credential = GoogleAuthProvider.getCredential(idToken, null)
+
+                auth.signInWithCredential(credential)
+                    .addOnCompleteListener { authTask ->
+                        if (authTask.isSuccessful) {
+                            val user = auth.currentUser
+                            navController.navigate("home")
+                            Toast.makeText(
+                                context, "Logado como ${user?.email}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Falha no login ${authTask.exception?.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+
+                    }
+            }
+
+        } catch (e: ApiException) {
+            Toast.makeText(context, "Falha no login ${e.message}", Toast.LENGTH_SHORT)
+        }
     }
 
     Column(
@@ -144,6 +204,18 @@ fun LoginScreen(
             }
 
         }
+
+        // Botão de login com Google
+        Spacer(modifier = modifier.height(8.dp))
+        Button(
+            onClick = {
+                // Inicia o fluxo de login do Google
+                launcher.launch(googleSignInClient.signInIntent)
+            }
+        ) {
+            Text(text = "Entrar com Google")
+        }
+
         Spacer(modifier = modifier.height(8.dp))
         TextButton(
             onClick = {
