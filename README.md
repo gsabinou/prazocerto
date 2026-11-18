@@ -97,7 +97,7 @@ app/src/main/java/br/com/fiap/prazocerto/
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/seu-usuario/PrazoCerto.git
+   git clone https://github.com/gsabinou/prazocerto.git
    cd PrazoCerto
    ```
 
